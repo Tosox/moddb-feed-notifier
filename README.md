@@ -10,7 +10,7 @@ Get notified about new add-ons, articles, files, videos, images and more on [Mod
 
 ## 🚀 Quick start (Docker)
 
-Create a `compose.yaml`:
+Create a `docker-compose.yaml`:
 
 ```yaml
 services:
