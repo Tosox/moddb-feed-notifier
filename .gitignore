@@ -1,12 +1,11 @@
-# Secrets & Config
-config.toml
-last_update.txt
-message.json
+# Secrets & local state
+.env
+state/
 
 # Python
 __pycache__/
 *.pyc
-
-# Other
-.env
-run.sh
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/

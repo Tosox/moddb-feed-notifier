@@ -1,0 +1,37 @@
+[project]
+name = "moddb-feed-notifier"
+version = "2.0.0"
+description = "Get notified about new items in ModDB feeds: add-ons, articles, files, videos, images and more."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "apprise>=2.1",
+    "jinja2>=3.1",
+    # Fork with a fix for ModDB's Cloudflare 403s, until it is part of an official moddb release
+    "moddb @ https://github.com/Tosox/moddb/archive/83805930b0455a96094d365d51306d725cd45805.zip",
+    "pydantic-settings>=2.7",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[project.scripts]
+moddb-feed-notifier = "moddb_feed_notifier.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

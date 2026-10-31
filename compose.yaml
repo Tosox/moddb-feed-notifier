@@ -1,7 +1,21 @@
 services:
-  anomaly-addon-notifier:
-    container_name: anomaly-addon-notifier
-    image: ghcr.io/tosox/anomaly-addon-notifier:latest
-    restart: always
+  moddb-feed-notifier:
+    image: ghcr.io/tosox/moddb-feed-notifier:latest
+    container_name: moddb-feed-notifier
+    restart: unless-stopped
+    environment:
+      # ModDB page whose feeds are watched (mod, game, member, ...)
+      MFN_PAGE: https://www.moddb.com/mods/stalker-anomaly
+      # Where notifications go: a Discord webhook URL, or any Apprise URL (https://appriseit.com/services/)
+      MFN_NOTIFY_URL: https://discord.com/api/webhooks/123456789/your-webhook-token
+      # Optional: feed types to watch, comma-separated (default addons)
+      # MFN_TYPES: addons,articles,videos
+      # Optional: check interval in minutes (default 30)
+      # MFN_INTERVAL: 30
+      # Optional: discord (default for Discord webhooks), markdown, html or text
+      # MFN_MESSAGE_FORMAT: discord
     volumes:
-      - /srv/anomaly-addon-notifier:/app/config
+      - state:/app/state
+
+volumes:
+  state:

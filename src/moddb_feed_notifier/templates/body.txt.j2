@@ -1,0 +1,7 @@
+{{ item.title }}
+
+{{ item.description | indent(4, first=True) }}
+
+{{ item.url }}
+
+Published {{ item.date.strftime("%Y-%m-%d %H:%M") }} UTC in {{ item.feed.section }} · {{ item.feed.page }}

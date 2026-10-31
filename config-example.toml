@@ -1,8 +1,0 @@
-[schedule]
-interval = 60
-
-[webhook]
-urls = [ "https://discord.com/api/webhooks/1234567890123456789/dANdak1Ndak3oio13JymLi89dAlnUiLopPq93jl1p1Bvahwgrm28Najw3NasdugDlam2" ]
-
-[rss_feed]
-url = "https://rss.moddb.com/mods/stalker-anomaly/addons/feed/rss.xml"

@@ -1,0 +1,25 @@
+{
+  "embeds": [
+    {
+      "author": {
+{% if item.feed.url %}
+        "url": {{ item.feed.url | tojson }},
+{% endif %}
+        "name": {{ (item.feed.section ~ " · " ~ item.feed.page) | truncate(256, true, "…", 0) | tojson }}
+      },
+      "title": {{ item.title | truncate(256, true, "…", 0) | tojson }},
+      "url": {{ item.url | tojson }},
+      "description": {{ item.description | truncate(4000, true, "…", 0) | quote | tojson }},
+      "color": 9308939,
+      "timestamp": {{ item.date.isoformat() | tojson }},
+      "thumbnail": { "url": "https://static.moddb.com/cutoff/images/logos/rss.png" },
+      "fields": [
+        { "name": "Visit", "value": {{ ("**[Open in browser ↗](" ~ item.url ~ ")**") | tojson }} }
+      ],
+{% if item.image %}
+      "image": { "url": {{ item.image | tojson }} },
+{% endif %}
+      "footer": { "text": "moddb-feed-notifier", "icon_url": "https://github.com/Tosox.png" }
+    }
+  ]
+}
