@@ -1,15 +1,18 @@
-# Use official Python slim image
 FROM python:3.12-slim
 
-# Set workdir
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MFN_STATE_DIR=/app/state
+
 WORKDIR /app
 
-# Copy dependencies list and install them
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
+RUN pip install . \
+ && useradd --system --uid 1000 notifier \
+ && mkdir -p /app/state \
+ && chown notifier /app/state
 
-# Copy the python script
-COPY anomaly_addon_notifier.py .
-
-# Set default command to run your notifier
-CMD ["python", "-u", "anomaly_addon_notifier.py"]
+USER notifier
+CMD ["moddb-feed-notifier"]

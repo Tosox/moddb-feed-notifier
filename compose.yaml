@@ -1,7 +1,0 @@
-services:
-  anomaly-addon-notifier:
-    container_name: anomaly-addon-notifier
-    image: ghcr.io/tosox/anomaly-addon-notifier:latest
-    restart: always
-    volumes:
-      - /srv/anomaly-addon-notifier:/app/config

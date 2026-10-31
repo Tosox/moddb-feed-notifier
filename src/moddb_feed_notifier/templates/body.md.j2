@@ -1,0 +1,9 @@
+**[{{ item.title }}]({{ item.url }})**
+
+{{ item.description | quote }}
+
+{% if item.image %}
+![{{ item.title }}]({{ item.image }})
+
+{% endif %}
+Published {{ item.date.strftime("%Y-%m-%d %H:%M") }} UTC in [{{ item.feed.section }} · {{ item.feed.page }}]({{ item.feed.url }})
