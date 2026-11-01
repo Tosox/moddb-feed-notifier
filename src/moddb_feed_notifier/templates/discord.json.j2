@@ -2,9 +2,7 @@
   "embeds": [
     {
       "author": {
-{% if item.feed.url %}
         "url": {{ item.feed.url | tojson }},
-{% endif %}
         "name": {{ (item.feed.section ~ " · " ~ item.feed.page) | truncate(256, true, "…", 0) | tojson }}
       },
       "title": {{ item.title | truncate(256, true, "…", 0) | tojson }},

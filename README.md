@@ -36,7 +36,7 @@ docker compose up -d
 docker compose logs -f
 ```
 
-On the first run the notifier only remembers the current time, so you won't get flooded with old items. From then on, every new item is posted.
+On the first run the notifier only remembers which items are already in the feeds, so you won't get flooded with old ones. From then on, every new item is posted, including items that show up late, e.g. add-ons that were approved by a moderator hours after they were submitted.
 
 ## ⚙️ Configuration
 
@@ -49,7 +49,7 @@ On the first run the notifier only remembers the current time, so you won't get 
 | `MFN_MAX_ITEMS` | | `10` | Most items sent per feed and check, e.g. after a longer downtime. Older ones are skipped. |
 | `MFN_MESSAGE_FORMAT` | | `discord` for Discord webhooks, otherwise `markdown` | `discord`, `markdown`, `html` or `text`, see *Custom messages* below. |
 | `MFN_TEMPLATE_DIR` | | | Folder with your own message templates, see below. |
-| `MFN_STATE_DIR` | | `./state` (`/app/state` in Docker) | Where the last check time of each feed is stored. |
+| `MFN_STATE_DIR` | | `./state` (`/app/state` in Docker) | Where the IDs of items already seen in each feed are stored. |
 | `MFN_LOG_LEVEL` | | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`. Libraries used by the notifier only log warnings and errors. |
 
 Missing or invalid values are listed at startup, so a bad configuration fails right away with a clear message.
