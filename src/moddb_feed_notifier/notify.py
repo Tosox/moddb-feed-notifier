@@ -76,7 +76,7 @@ def send_discord(webhook_url: str, payload: dict) -> bool:
             log.error("Discord webhook request failed: %s", exc)
             return False
         if response.status_code == 429:
-            retry_after = float(response.json().get("retry_after", 1))
+            retry_after = float(response.json()["retry_after"])
             log.debug("Discord rate limit hit, retrying in %.1fs", retry_after)
             time.sleep(retry_after)
             continue
@@ -89,6 +89,7 @@ def send_discord(webhook_url: str, payload: dict) -> bool:
 
 
 SAMPLE_ITEM = Item(
+    id="downloads123456",
     type="addons",
     feed=Feed(
         title="Addon files RSS feed - S.T.A.L.K.E.R. Anomaly mod for S.T.A.L.K.E.R.: Call of Pripyat - ModDB",

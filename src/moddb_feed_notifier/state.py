@@ -1,32 +1,31 @@
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-log = logging.getLogger(__name__)
-
 STATE_FILE_NAME = "state.json"
+# Feeds show about 10 items; the extra room keeps deleted items from bringing older, already sent ones back
+MAX_SEEN_IDS = 50
 
 
 @dataclass
 class State:
-    """Persisted between runs: when each feed type was last checked."""
+    """Persisted between runs: the IDs of the items already seen in each feed, oldest first."""
 
-    last_checked: dict[str, int] = field(default_factory=dict)
+    seen: dict[str, list[str]] = field(default_factory=dict)
 
     @classmethod
     def load(cls, state_dir: Path) -> State:
         path = state_dir / STATE_FILE_NAME
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return cls(last_checked={str(k): int(v) for k, v in data.get("last_checked", {}).items()})
-        except FileNotFoundError:
+        if not path.exists():
             return cls()
-        except (OSError, ValueError, TypeError, AttributeError) as exc:
-            log.warning("Ignoring unreadable state file %s: %s", path, exc)
-            return cls()
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return cls(seen=data.get("seen", {}))
+
+    def mark_seen(self, feed_type: str, ids: list[str]) -> None:
+        seen = [i for i in self.seen.get(feed_type, []) if i not in ids] + ids
+        self.seen[feed_type] = seen[-MAX_SEEN_IDS:]
 
     def save(self, state_dir: Path) -> None:
         state_dir.mkdir(parents=True, exist_ok=True)

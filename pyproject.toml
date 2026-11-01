@@ -1,6 +1,6 @@
 [project]
 name = "moddb-feed-notifier"
-version = "2.0.0"
+version = "2.0.1"
 description = "Get notified about new items in ModDB feeds: add-ons, articles, files, videos, images and more."
 readme = "README.md"
 license = "MIT"

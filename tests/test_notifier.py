@@ -23,6 +23,7 @@ RSS = """<?xml version="1.0" encoding="UTF-8"?>
     <item>
       <title>Newer Addon</title>
       <link>https://www.moddb.com/mods/stalker-anomaly/addons/newer</link>
+      <guid isPermaLink="false">downloads2</guid>
       <pubDate>Fri, 02 Jan 2026 15:00:00 +0100</pubDate>
       <media:content url="https://media.moddb.com/newer.png">
         <media:description>Fixes&nbsp;everything &amp; more</media:description>
@@ -32,7 +33,9 @@ RSS = """<?xml version="1.0" encoding="UTF-8"?>
       <title>Older
         Addon</title>
       <link>https://www.moddb.com/mods/stalker-anomaly/addons/older</link>
+      <guid isPermaLink="false">downloads1</guid>
       <pubDate>Fri, 02 Jan 2026 10:00:00 GMT</pubDate>
+      <description>Old &lt;br /&gt;text</description>
     </item>
   </channel>
 </rss>
@@ -51,6 +54,7 @@ def make_item(
     title: str = "Cool Addon", description: str = "Nice!", image: str | None = "https://img/x.png", feed: Feed = FEED
 ) -> Item:
     return Item(
+        id=f"downloads-{title}",
         type="addons",
         feed=feed,
         title=title,
@@ -119,9 +123,11 @@ def test_secrets_are_hidden(settings):
 def test_parse_feed():
     older, newer = feed.parse_feed(RSS, "addons")
 
+    assert older.id == "downloads1"
     assert older.title == "Older Addon"
     assert older.image is None
-    assert older.description == ""
+    assert older.description == "Old \ntext"
+    assert newer.id == "downloads2"
     assert newer.title == "Newer Addon"
     assert newer.description == "Fixes\xa0everything & more"
     assert newer.image == "https://media.moddb.com/newer.png"
@@ -136,61 +142,76 @@ def test_parse_channel():
     assert older.feed.url == "https://www.moddb.com/mods/stalker-anomaly/addons"
 
 
-def test_parse_channel_with_unknown_title_format():
-    xml = (
-        "<rss><channel><title>Something else</title><item><pubDate>Sun, 07 Jan 2024 13:53:17 +0000</pubDate>"
-        "</item></channel></rss>"
-    )
-    (item,) = feed.parse_feed(xml, "videos")
+def test_parse_site_wide_channel():
+    xml = RSS.replace("S.T.A.L.K.E.R. Anomaly mod for S.T.A.L.K.E.R.: Call of Pripyat - ", "")
+    older, _ = feed.parse_feed(xml, "addons")
 
-    assert item.feed == Feed(title="Something else", section="Videos", page="Something else", url="")
+    assert (older.feed.section, older.feed.page) == ("Addon files", "ModDB")
 
 
-def test_parse_feed_without_media():
+def test_unknown_channel_title_is_an_error():
+    xml = RSS.replace("Addon files RSS feed - S.T.A.L.K.E.R.", "Something else - S.T.A.L.K.E.R.")
+    with pytest.raises(ValueError, match="unexpected feed title"):
+        feed.parse_feed(xml, "addons")
+
+
+def test_missing_guid_is_an_error():
+    xml = RSS.replace('<guid isPermaLink="false">downloads1</guid>', "")
+    with pytest.raises(ValueError, match="<guid> missing"):
+        feed.parse_feed(xml, "addons")
+
+
+def test_parse_review():
     xml = """<rss version="2.0"><channel>
+      <title>Review RSS feed - Tosox - ModDB</title>
+      <link>https://www.moddb.com/members/tosox/reviews</link>
       <item>
         <title>True Stalker review by Tosox</title>
         <link>https://www.moddb.com/mods/true-stalker/reviews/901491</link>
         <pubDate>Sun, 07 Jan 2024 13:53:17 +0000</pubDate>
+        <guid isPermaLink="false">reviews901491</guid>
         <description>I don&#39;t get it.&lt;br /&gt;Use &amp;lt;b&amp;gt; for bold.</description>
       </item>
-      <item>
-        <title>Enclosure only</title>
-        <link>https://www.moddb.com/x</link>
-        <pubDate>Mon, 08 Jan 2024 13:53:17 +0000</pubDate>
-        <description><![CDATA[<img src="https://img/thumb.jpg" /><br />Text]]></description>
-        <enclosure url="https://img/thumb.jpg" length="0" type="image/jpeg" />
-      </item>
     </channel></rss>"""
-    review, enclosure_only = feed.parse_feed(xml, "reviews")
+    (review,) = feed.parse_feed(xml, "reviews")
 
     assert review.description == "I don't get it.\nUse <b> for bold."
     assert review.image is None
-    assert enclosure_only.description == "Text"
-    assert enclosure_only.image == "https://img/thumb.jpg"
+    assert (review.feed.section, review.feed.page) == ("Review", "Tosox")
 
 
-def test_fetch_new_items_filters_by_date(monkeypatch):
+def test_fetch_items(monkeypatch):
     class Response:
         text = RSS
 
     monkeypatch.setattr(feed.moddb.utils, "request", lambda req: Response())
-    since = int(datetime.datetime(2026, 1, 2, 12, 0, tzinfo=datetime.UTC).timestamp())
-
-    assert [item.title for item in feed.fetch_new_items("https://rss/feed", "addons", since)] == ["Newer Addon"]
+    assert [item.id for item in feed.fetch_items("https://rss/feed", "addons")] == ["downloads1", "downloads2"]
 
 
 # State
 
 
 def test_state_roundtrip(tmp_path):
-    State(last_checked={"addons": 123}).save(tmp_path)
-    assert State.load(tmp_path) == State(last_checked={"addons": 123})
+    State(seen={"addons": ["a", "b"]}).save(tmp_path)
+    assert State.load(tmp_path) == State(seen={"addons": ["a", "b"]})
 
 
-def test_state_missing_or_corrupt(tmp_path):
+def test_state_from_older_version_starts_fresh(tmp_path):
+    (tmp_path / "state.json").write_text('{"last_checked": {"addons": 1793539413}}', encoding="utf-8")
     assert State.load(tmp_path) == State()
-    (tmp_path / "state.json").write_text("{not json", encoding="utf-8")
+
+
+def test_mark_seen_keeps_the_newest_ids():
+    state = State()
+    state.mark_seen("addons", [str(i) for i in range(60)])
+    state.mark_seen("addons", ["10", "new"])
+
+    assert len(state.seen["addons"]) == 50
+    assert state.seen["addons"][-2:] == ["10", "new"]
+    assert "9" not in state.seen["addons"]
+
+
+def test_state_missing(tmp_path):
     assert State.load(tmp_path) == State()
 
 
@@ -209,14 +230,8 @@ def test_discord_payload_is_valid_and_escaped():
 
 
 def test_discord_author_shows_feed():
-    env = notify.create_environment(None)
-    with_url = json.loads(notify.render(env, make_item(), "discord").body)["embeds"][0]
-    without_url = json.loads(notify.render(env, make_item(feed=Feed("t", "Reviews", "Tosox", "")), "discord").body)[
-        "embeds"
-    ][0]
-
-    assert with_url["author"] == {"name": "Addon files · Tosox", "url": "https://www.moddb.com/members/tosox/addons"}
-    assert without_url["author"] == {"name": "Reviews · Tosox"}
+    embed = json.loads(notify.render(notify.create_environment(None), make_item(), "discord").body)["embeds"][0]
+    assert embed["author"] == {"name": "Addon files · Tosox", "url": "https://www.moddb.com/members/tosox/addons"}
 
 
 def test_discord_payload_without_image_and_truncated():
@@ -289,69 +304,85 @@ def fake_feed(monkeypatch):
     sent: list[str] = []
     result = {"items": [make_item("A"), make_item("B")], "fail_on": None, "fetch_fails": False}
 
-    def fetch(url, feed_type, since):
+    def fetch(url, feed_type):
         if result["fetch_fails"]:
             raise ConnectionError("moddb down")
         return result["items"]
 
     def send(url, message):
-        if message.title.endswith(result["fail_on"] or "\0"):
+        if result["fail_on"] and message.title.endswith(result["fail_on"]):
             return False
         sent.append(message.title)
         return True
 
-    monkeypatch.setattr(feed, "fetch_new_items", fetch)
+    monkeypatch.setattr(feed, "fetch_items", fetch)
     monkeypatch.setattr(notify, "send", send)
-    monkeypatch.setattr(app.time, "time", lambda: 2_000_000_000)
     return result, sent
 
 
-def test_first_run_starts_from_now(settings, fake_feed):
-    _, sent = fake_feed
-    state = State()
+def check(settings, state):
     app.check(settings, notify.create_environment(None), state, "addons")
 
-    assert state.last_checked == {"addons": 2_000_000_000}
+
+def test_first_run_remembers_current_items(settings, fake_feed):
+    _, sent = fake_feed
+    state = State()
+    check(settings, state)
+
+    assert state.seen == {"addons": ["downloads-A", "downloads-B"]}
     assert sent == []
 
 
-def test_new_items_are_sent_and_state_advances(settings, fake_feed):
+def test_only_unseen_items_are_sent(settings, fake_feed):
     _, sent = fake_feed
-    state = State(last_checked={"addons": 500})
-    app.check(settings, notify.create_environment(None), state, "addons")
+    state = State(seen={"addons": ["downloads-A"]})
+    check(settings, state)
 
-    assert sent == ["[Addon files] A", "[Addon files] B"]
-    assert state.last_checked == {"addons": 2_000_000_000}
+    assert sent == ["[Addon files] B"]
+    assert state.seen == {"addons": ["downloads-A", "downloads-B"]}
 
 
-def test_max_items_keeps_the_newest(tmp_path, fake_feed):
+def test_late_approved_item_with_old_date_is_sent(settings, fake_feed):
+    """An item that appears in the feed only after newer ones (e.g. approved later) must not be missed."""
+    result, sent = fake_feed
+    state = State()
+    check(settings, state)
+
+    late = Item(**{**make_item("Late").__dict__, "date": datetime.datetime(2020, 1, 1, tzinfo=datetime.UTC)})
+    result["items"] = [late, *result["items"]]
+    check(settings, state)
+
+    assert sent == ["[Addon files] Late"]
+
+
+def test_max_items_keeps_the_newest_and_skips_the_rest(tmp_path, fake_feed):
     result, sent = fake_feed
     result["items"] = [make_item(str(i)) for i in range(5)]
     settings = Settings(page=PAGE, notify_url=DISCORD_URL, state_dir=tmp_path, max_items=2)
-    app.check(settings, notify.create_environment(None), State(last_checked={"addons": 500}), "addons")
+    state = State(seen={"addons": []})
+    check(settings, state)
 
     assert sent == ["[Addon files] 3", "[Addon files] 4"]
+    assert sorted(state.seen["addons"]) == [f"downloads-{i}" for i in range(5)]
 
 
 def test_fetch_failure_keeps_state(settings, fake_feed):
     result, _ = fake_feed
     result["fetch_fails"] = True
-    state = State(last_checked={"addons": 500})
-    app.check(settings, notify.create_environment(None), state, "addons")
+    state = State()
+    check(settings, state)
 
-    assert state.last_checked == {"addons": 500}
+    assert state.seen == {}  # first run is repeated next time
 
 
-def test_send_failure_resumes_from_failed_item(settings, fake_feed):
+def test_send_failure_retries_from_failed_item(settings, fake_feed):
     result, sent = fake_feed
-    item_b = make_item("B")
-    result["items"] = [make_item("A"), item_b]
     result["fail_on"] = "B"
-    state = State(last_checked={"addons": 500})
-    app.check(settings, notify.create_environment(None), state, "addons")
+    state = State(seen={"addons": []})
+    check(settings, state)
 
     assert sent == ["[Addon files] A"]
-    assert state.last_checked == {"addons": int(item_b.date.timestamp()) - 1}
+    assert state.seen == {"addons": ["downloads-A"]}
 
 
 # CLI
